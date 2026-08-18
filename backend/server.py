@@ -150,6 +150,45 @@ async def create_business(payload: BusinessCreate):
     return business
 
 
+@api_router.get("/businesses/{business_id}")
+async def get_business(business_id: str):
+    biz = await db.businesses.find_one({"_id": business_id})
+    if not biz:
+        raise HTTPException(status_code=404, detail="Usaha tidak ditemukan")
+    biz["id"] = biz.pop("_id")
+    return biz
+
+
+TOKEN_RE = re.compile(r"^[A-Z0-9]{4,20}$")
+
+
+class TokenUpdate(BaseModel):
+    token: str
+
+    @field_validator("token")
+    @classmethod
+    def validate_token(cls, v: str) -> str:
+        v = v.strip().upper()
+        if not TOKEN_RE.match(v):
+            raise ValueError("Token harus 4-20 karakter huruf/angka, tanpa spasi")
+        return v
+
+
+@api_router.patch("/businesses/{business_id}/token")
+async def update_business_token(business_id: str, payload: TokenUpdate):
+    biz = await db.businesses.find_one({"_id": business_id})
+    if not biz:
+        raise HTTPException(status_code=404, detail="Usaha tidak ditemukan")
+    clash = await db.businesses.find_one({"token": payload.token, "_id": {"$ne": business_id}})
+    if clash:
+        raise HTTPException(status_code=409, detail="Token sudah dipakai usaha lain, coba token lain")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.businesses.update_one({"_id": business_id}, {"$set": {"token": payload.token, "updated_at": now}})
+    biz = await db.businesses.find_one({"_id": business_id})
+    biz["id"] = biz.pop("_id")
+    return biz
+
+
 app.include_router(api_router)
 
 app.add_middleware(

@@ -119,10 +119,7 @@ export default function BuatUsaha() {
         setError(data.detail || "Gagal membuat usaha, coba lagi");
         return;
       }
-      router.push({
-        pathname: "/konfirmasi-usaha",
-        params: { name: data.name, token: data.token, employeeLimit: String(data.employee_limit) },
-      });
+      router.replace({ pathname: "/konfirmasi-usaha", params: { id: data.id } });
     } catch {
       setError("Gagal terhubung ke server, cek koneksi kamu");
     } finally {
