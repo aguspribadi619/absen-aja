@@ -35,6 +35,12 @@
           "resizeMode": "contain",
           "backgroundColor": "#004AC2"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Dipakai buat pilih logo usaha kamu."
+        }
       ]
     ],
     "experiments": {
