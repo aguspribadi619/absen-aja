@@ -41,7 +41,8 @@
         {
           "photosPermission": "Dipakai buat pilih logo usaha kamu."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,12 +1,29 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { storage } from "@/src/utils/storage";
 import { C } from "@/src/theme";
+
+const SESSION_KEY = "absen_owner_business_id";
 
 export default function Splash() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const businessId = await storage.secureGet(SESSION_KEY, null);
+      if (businessId) {
+        router.replace("/dashboard-owner");
+        return;
+      }
+      setCheckingSession(false);
+    })();
+  }, []);
+
+  if (checkingSession) return <View style={styles.container} />;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}>

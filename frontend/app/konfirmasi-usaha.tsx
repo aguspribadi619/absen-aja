@@ -145,7 +145,7 @@ export default function KonfirmasiUsaha() {
       <View style={styles.footer}>
         <Pressable
           testID="btn-masuk-dashboard"
-          onPress={() => router.replace("/dashboard-owner")}
+          onPress={() => router.replace({ pathname: "/setup-kredensial-owner", params: { id: biz.id } })}
           style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed]}
         >
           <Text style={styles.submitBtnText}>MASUK KE DASHBOARD</Text>

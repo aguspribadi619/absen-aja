@@ -10,6 +10,7 @@ import os
 import re
 import logging
 import uuid
+import bcrypt
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -117,6 +118,13 @@ class BusinessCreate(BaseModel):
         return v
 
 
+def serialize_business(biz: dict) -> dict:
+    biz = dict(biz)
+    biz["id"] = biz.pop("_id")
+    biz.pop("owner_pin_hash", None)
+    return biz
+
+
 async def generate_unique_token(name: str) -> str:
     first_word = re.split(r"\s+", name.strip())[0]
     base = re.sub(r"[^A-Za-z0-9]", "", first_word).upper()[:10] or "USAHA"
@@ -142,12 +150,13 @@ async def create_business(payload: BusinessCreate):
         "work_end": payload.work_end,
         "work_days": payload.work_days,
         "employee_limit": EMPLOYEE_LIMIT_DEFAULT,
+        "owner_phone": None,
+        "owner_pin_hash": None,
         "created_at": now,
         "updated_at": now,
     }
     await db.businesses.insert_one(business)
-    business["id"] = business.pop("_id")
-    return business
+    return serialize_business(business)
 
 
 @api_router.get("/businesses/{business_id}")
@@ -155,8 +164,7 @@ async def get_business(business_id: str):
     biz = await db.businesses.find_one({"_id": business_id})
     if not biz:
         raise HTTPException(status_code=404, detail="Usaha tidak ditemukan")
-    biz["id"] = biz.pop("_id")
-    return biz
+    return serialize_business(biz)
 
 
 TOKEN_RE = re.compile(r"^[A-Z0-9]{4,20}$")
@@ -185,8 +193,65 @@ async def update_business_token(business_id: str, payload: TokenUpdate):
     now = datetime.now(timezone.utc).isoformat()
     await db.businesses.update_one({"_id": business_id}, {"$set": {"token": payload.token, "updated_at": now}})
     biz = await db.businesses.find_one({"_id": business_id})
-    biz["id"] = biz.pop("_id")
-    return biz
+    return serialize_business(biz)
+
+
+PIN_RE = re.compile(r"^\S{4,20}$")
+
+
+class OwnerCredentials(BaseModel):
+    phone: str
+    pin: str
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Nomor HP/Email wajib diisi")
+        return v
+
+    @field_validator("pin")
+    @classmethod
+    def validate_pin(cls, v: str) -> str:
+        if not PIN_RE.match(v or ""):
+            raise ValueError("PIN harus 4-20 karakter tanpa spasi")
+        return v
+
+
+@api_router.patch("/businesses/{business_id}/owner-credentials")
+async def set_owner_credentials(business_id: str, payload: OwnerCredentials):
+    biz = await db.businesses.find_one({"_id": business_id})
+    if not biz:
+        raise HTTPException(status_code=404, detail="Usaha tidak ditemukan")
+    clash = await db.businesses.find_one({"owner_phone": payload.phone, "_id": {"$ne": business_id}})
+    if clash:
+        raise HTTPException(status_code=409, detail="Nomor HP/Email ini sudah dipakai usaha lain")
+    pin_hash = bcrypt.hashpw(payload.pin.encode(), bcrypt.gensalt()).decode()
+    now = datetime.now(timezone.utc).isoformat()
+    await db.businesses.update_one(
+        {"_id": business_id},
+        {"$set": {"owner_phone": payload.phone, "owner_pin_hash": pin_hash, "updated_at": now}},
+    )
+    biz = await db.businesses.find_one({"_id": business_id})
+    return serialize_business(biz)
+
+
+class OwnerLogin(BaseModel):
+    identifier: str
+    pin: str
+
+
+@api_router.post("/owners/login")
+async def owner_login(payload: OwnerLogin):
+    generic_error = "Nomor HP/Email atau PIN salah"
+    identifier = payload.identifier.strip()
+    biz = await db.businesses.find_one({"owner_phone": identifier})
+    if not biz or not biz.get("owner_pin_hash"):
+        raise HTTPException(status_code=401, detail=generic_error)
+    if not bcrypt.checkpw(payload.pin.encode(), biz["owner_pin_hash"].encode()):
+        raise HTTPException(status_code=401, detail=generic_error)
+    return serialize_business(biz)
 
 
 app.include_router(api_router)
