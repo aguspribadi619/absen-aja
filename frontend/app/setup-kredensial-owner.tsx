@@ -3,11 +3,10 @@ import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, Text, TextInput
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PinField } from "@/src/components/PinField";
-import { storage } from "@/src/utils/storage";
+import { setOwnerSession } from "@/src/utils/session";
 import { C } from "@/src/theme";
 
 const BACKEND = process.env.EXPO_PUBLIC_BACKEND_URL;
-const SESSION_KEY = "absen_owner_business_id";
 
 // Dipaksa diisi sebelum bisa masuk ke Dashboard -- tanpa ini owner gak akan
 // pernah bisa login lagi (Buat Usaha & mockup gak punya field kredensial
@@ -44,7 +43,7 @@ export default function SetupKredensialOwner() {
         setError(data.detail || "Gagal menyimpan kredensial");
         return;
       }
-      await storage.secureSet(SESSION_KEY, data.id);
+      await setOwnerSession(data.id, true);
       router.replace("/dashboard-owner");
     } catch {
       setError("Gagal terhubung ke server, cek koneksi kamu");

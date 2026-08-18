@@ -4,11 +4,10 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PinField } from "@/src/components/PinField";
 import { Icon } from "@/src/components/Icon";
-import { storage } from "@/src/utils/storage";
+import { setOwnerSession } from "@/src/utils/session";
 import { C } from "@/src/theme";
 
 const BACKEND = process.env.EXPO_PUBLIC_BACKEND_URL;
-const SESSION_KEY = "absen_owner_business_id";
 
 export default function LoginOwner() {
   const router = useRouter();
@@ -36,7 +35,7 @@ export default function LoginOwner() {
         setError(data.detail || "Gagal masuk, coba lagi");
         return;
       }
-      if (rememberMe) await storage.secureSet(SESSION_KEY, data.id);
+      await setOwnerSession(data.id, rememberMe);
       router.replace("/dashboard-owner");
     } catch {
       setError("Gagal terhubung ke server, cek koneksi kamu");

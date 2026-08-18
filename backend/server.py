@@ -254,6 +254,66 @@ async def owner_login(payload: OwnerLogin):
     return serialize_business(biz)
 
 
+def serialize_employee(emp: dict) -> dict:
+    emp = dict(emp)
+    emp["id"] = emp.pop("_id")
+    emp.pop("pin_hash", None)
+    return emp
+
+
+class EmployeeCreate(BaseModel):
+    name: str
+    pin: str
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Nama karyawan wajib diisi")
+        return v
+
+    @field_validator("pin")
+    @classmethod
+    def validate_pin(cls, v: str) -> str:
+        if not PIN_RE.match(v or ""):
+            raise ValueError("PIN harus 4-20 karakter tanpa spasi")
+        return v
+
+
+@api_router.get("/businesses/{business_id}/employees")
+async def list_employees(business_id: str):
+    biz = await db.businesses.find_one({"_id": business_id})
+    if not biz:
+        raise HTTPException(status_code=404, detail="Usaha tidak ditemukan")
+    employees = await db.employees.find({"business_id": business_id}).sort("created_at", 1).to_list(1000)
+    return [serialize_employee(e) for e in employees]
+
+
+@api_router.post("/businesses/{business_id}/employees")
+async def create_employee(business_id: str, payload: EmployeeCreate):
+    biz = await db.businesses.find_one({"_id": business_id})
+    if not biz:
+        raise HTTPException(status_code=404, detail="Usaha tidak ditemukan")
+    current_count = await db.employees.count_documents({"business_id": business_id})
+    if current_count >= biz.get("employee_limit", EMPLOYEE_LIMIT_DEFAULT):
+        raise HTTPException(status_code=409, detail=f"Sudah mencapai batas maksimal {biz.get('employee_limit', EMPLOYEE_LIMIT_DEFAULT)} karyawan")
+    pin_hash = bcrypt.hashpw(payload.pin.encode(), bcrypt.gensalt()).decode()
+    now = datetime.now(timezone.utc).isoformat()
+    employee = {
+        "_id": str(uuid.uuid4()),
+        "business_id": business_id,
+        "name": payload.name,
+        "role": "karyawan",
+        "pin_hash": pin_hash,
+        "is_active": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.employees.insert_one(employee)
+    return serialize_employee(employee)
+
+
 app.include_router(api_router)
 
 app.add_middleware(

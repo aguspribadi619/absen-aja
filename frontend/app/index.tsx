@@ -2,10 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { storage } from "@/src/utils/storage";
+import { shouldAutoLogin } from "@/src/utils/session";
 import { C } from "@/src/theme";
-
-const SESSION_KEY = "absen_owner_business_id";
 
 export default function Splash() {
   const router = useRouter();
@@ -14,8 +12,7 @@ export default function Splash() {
 
   useEffect(() => {
     (async () => {
-      const businessId = await storage.secureGet(SESSION_KEY, null);
-      if (businessId) {
+      if (await shouldAutoLogin()) {
         router.replace("/dashboard-owner");
         return;
       }
