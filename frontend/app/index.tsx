@@ -1,47 +1,52 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
+import React from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { C } from "@/src/theme";
 
-const BACKEND = process.env.EXPO_PUBLIC_BACKEND_URL;
-
-// Placeholder root screen for Phase 1 setup: hits the backend health check so
-// "project setup" is actually verified end-to-end (Expo -> FastAPI -> Mongo),
-// not just "expo start boots". Gets replaced by the real Splash screen next.
-export default function Index() {
-  const [status, setStatus] = useState<"checking" | "ok" | "error">("checking");
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`${BACKEND}/api/health`);
-        const data = await res.json();
-        setStatus(data.status === "ok" ? "ok" : "error");
-      } catch {
-        setStatus("error");
-      }
-    })();
-  }, []);
+export default function Splash() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.container}>
-      <Image source={require("@/assets/images/logo_vivid_blue.png")} style={styles.logo} resizeMode="contain" />
-      <Text style={styles.tagline}>Absensi Gak Pake Ribet.</Text>
-      <View style={styles.statusRow}>
-        {status === "checking" && <ActivityIndicator color={C.navy} />}
-        <Text style={[styles.statusText, status === "ok" && { color: C.success }, status === "error" && { color: C.danger }]}>
-          {status === "checking" && "Mengecek koneksi backend..."}
-          {status === "ok" && "Backend & database terhubung ✓"}
-          {status === "error" && "Gagal konek ke backend"}
-        </Text>
+    <View style={[styles.container, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}>
+      <View style={styles.top}>
+        <Image source={require("@/assets/images/logo_white.png")} style={styles.logo} resizeMode="contain" />
+        <Text style={styles.tagline}>Absensi Gak Pake Ribet.</Text>
+      </View>
+
+      <View style={styles.spacer} />
+
+      <View style={styles.actions}>
+        <Pressable
+          testID="btn-buat-usaha"
+          onPress={() => router.push("/buat-usaha")}
+          style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
+        >
+          <Text style={styles.primaryBtnText}>BUAT USAHA</Text>
+        </Pressable>
+        <Pressable
+          testID="btn-sudah-punya-akun"
+          onPress={() => router.push("/masuk")}
+          style={({ pressed }) => [styles.outlineBtn, pressed && styles.pressed]}
+        >
+          <Text style={styles.outlineBtnText}>SUDAH PUNYA AKUN</Text>
+        </Pressable>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg, alignItems: "center", justifyContent: "center", padding: 24 },
-  logo: { width: 240, height: 80, marginBottom: 16 },
-  tagline: { fontSize: 14, color: C.textMuted, marginBottom: 32 },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  statusText: { fontSize: 14, color: C.text },
+  container: { flex: 1, backgroundColor: C.navy, paddingHorizontal: 24 },
+  top: { alignItems: "flex-start" },
+  logo: { width: 220, height: 60, marginBottom: 12 },
+  tagline: { fontSize: 15, color: "#FFFFFF", opacity: 0.9 },
+  spacer: { flex: 1 },
+  actions: { gap: 12 },
+  primaryBtn: { backgroundColor: C.accent, borderRadius: 14, paddingVertical: 16, alignItems: "center" },
+  primaryBtnText: { color: C.navyDark, fontWeight: "700", fontSize: 15, letterSpacing: 0.3 },
+  outlineBtn: { borderWidth: 1.5, borderColor: "#FFFFFF", borderRadius: 14, paddingVertical: 16, alignItems: "center" },
+  outlineBtnText: { color: "#FFFFFF", fontWeight: "700", fontSize: 15, letterSpacing: 0.3 },
+  pressed: { opacity: 0.85 },
 });

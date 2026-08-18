@@ -1,9 +1,9 @@
 // Design tokens dari mockup.png (lihat absen-aja-build-brief.md section 8).
 // Placeholder hex — akan dipertajam pas nyocokin pixel-by-pixel ke tiap layar.
 export const C = {
-  navy: "#153E90",      // primary — tombol utama, header, ikon
-  navyDark: "#0E2B66",
-  accent: "#F5A623",    // oranye/gold — CTA sekunder, badge trial, teks "Aja"
+  navy: "#004AC2",      // primary — tombol utama, header, ikon (disampling dari mockup)
+  navyDark: "#003994",
+  accent: "#FDB522",    // oranye/gold — CTA sekunder, badge trial, teks "Aja" (disampling dari mockup)
   success: "#1FA971",   // hijau — tepat waktu/sukses
   danger: "#E14848",    // merah — terlambat
   warning: "#F5A623",   // oranye — trial/warning
