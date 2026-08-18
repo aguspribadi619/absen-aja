@@ -21,11 +21,7 @@ export default function DashboardOwner() {
       <View style={styles.body}>
         <Text style={styles.placeholder}>Dashboard Owner — segera dibangun.</Text>
         {businessId && (
-          <Pressable
-            testID="link-kelola-karyawan"
-            onPress={() => router.push({ pathname: "/karyawan", params: { businessId } })}
-            style={styles.link}
-          >
+          <Pressable testID="link-kelola-karyawan" onPress={() => router.push("/karyawan")} style={styles.link}>
             <Text style={styles.linkText}>Kelola Karyawan (sementara)</Text>
           </Pressable>
         )}

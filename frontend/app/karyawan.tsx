@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Header } from "@/src/components/Header";
 import { Icon } from "@/src/components/Icon";
+import { authHeaders } from "@/src/utils/session";
 import { C } from "@/src/theme";
 
 const BACKEND = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -12,14 +13,15 @@ type Employee = { id: string; name: string; is_active: boolean };
 
 export default function Karyawan() {
   const router = useRouter();
-  const { businessId } = useLocalSearchParams<{ businessId: string }>();
   const [employees, setEmployees] = useState<Employee[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // business_id datang dari sesi (Authorization header), bukan dari client --
+  // lihat backend/CONVENTIONS.md.
   const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await fetch(`${BACKEND}/api/businesses/${businessId}/employees`);
+      const res = await fetch(`${BACKEND}/api/employees`, { headers: await authHeaders() });
       const data = await res.json();
       if (!res.ok) {
         setError(data.detail || "Gagal memuat data karyawan");
@@ -29,7 +31,7 @@ export default function Karyawan() {
     } catch {
       setError("Gagal terhubung ke server");
     }
-  }, [businessId]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -43,7 +45,7 @@ export default function Karyawan() {
       <View style={styles.body}>
         <Pressable
           testID="btn-tambah-karyawan"
-          onPress={() => router.push({ pathname: "/tambah-karyawan", params: { businessId } })}
+          onPress={() => router.push("/tambah-karyawan")}
           style={({ pressed }) => [styles.addBtn, pressed && styles.pressed]}
         >
           <Icon name="add" color="#fff" size={18} />

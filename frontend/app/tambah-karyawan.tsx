@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Header } from "@/src/components/Header";
 import { PinField } from "@/src/components/PinField";
+import { authHeaders } from "@/src/utils/session";
 import { C } from "@/src/theme";
 
 const BACKEND = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -12,13 +13,14 @@ const BACKEND = process.env.EXPO_PUBLIC_BACKEND_URL;
 // atas input, tombol navy full-width). Lihat absen-aja-build-brief.md section 8.
 export default function TambahKaryawan() {
   const router = useRouter();
-  const { businessId } = useLocalSearchParams<{ businessId: string }>();
   const [name, setName] = useState("");
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // business_id datang dari sesi (Authorization header), bukan dari client --
+  // lihat backend/CONVENTIONS.md.
   const submit = async () => {
     setError(null);
     if (!name.trim()) return setError("Nama karyawan wajib diisi");
@@ -26,9 +28,9 @@ export default function TambahKaryawan() {
     if (pin !== confirmPin) return setError("Konfirmasi PIN tidak sama");
     setSubmitting(true);
     try {
-      const res = await fetch(`${BACKEND}/api/businesses/${businessId}/employees`, {
+      const res = await fetch(`${BACKEND}/api/employees`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await authHeaders()) },
         body: JSON.stringify({ name: name.trim(), pin }),
       });
       const data = await res.json();

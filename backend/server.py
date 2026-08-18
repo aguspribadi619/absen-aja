@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Header, Depends
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
@@ -11,6 +11,7 @@ import re
 import logging
 import uuid
 import bcrypt
+import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -42,6 +43,38 @@ VALID_WORK_DAYS = {"sen", "sel", "rab", "kam", "jum", "sab", "min"}
 TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 MAX_LOGO_BYTES = 3 * 1024 * 1024  # base64 string length cap (~3MB)
 EMPLOYEE_LIMIT_DEFAULT = 20
+
+
+# --- Auth / tenant isolation ---------------------------------------------
+# Section 2 & 9 dari brief: isolasi data antar business_id WAJIB ditegakkan
+# di backend (Mongo gak punya RLS kayak Postgres). Pola: setiap login
+# (owner atau karyawan, nanti poin 7) dapat token sesi opaque yang disimpan
+# di koleksi `sessions` -> business_id. Endpoint yang akses data
+# karyawan/absensi TIDAK BOLEH menerima business_id dari path/body/query --
+# wajib lewat get_current_business_id, yang nolak (401) kalau token gak ada
+# atau gak valid. Detail & endpoint mana yang jadi pengecualian (bootstrap
+# sebelum ada sesi) didokumentasikan di backend/CONVENTIONS.md.
+async def create_session(business_id: str) -> str:
+    token = secrets.token_urlsafe(32)
+    await db.sessions.insert_one({
+        "_id": token,
+        "business_id": business_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return token
+
+
+async def get_current_business_id(authorization: str = Header(default="")) -> str:
+    invalid = HTTPException(status_code=401, detail="Sesi tidak valid, silakan login ulang")
+    if not authorization.startswith("Bearer "):
+        raise invalid
+    token = authorization.removeprefix("Bearer ").strip()
+    if not token:
+        raise invalid
+    session = await db.sessions.find_one({"_id": token})
+    if not session:
+        raise invalid
+    return session["business_id"]
 
 
 @api_router.get("/")
@@ -234,7 +267,8 @@ async def set_owner_credentials(business_id: str, payload: OwnerCredentials):
         {"$set": {"owner_phone": payload.phone, "owner_pin_hash": pin_hash, "updated_at": now}},
     )
     biz = await db.businesses.find_one({"_id": business_id})
-    return serialize_business(biz)
+    token = await create_session(business_id)
+    return {"token": token, "business": serialize_business(biz)}
 
 
 class OwnerLogin(BaseModel):
@@ -251,7 +285,8 @@ async def owner_login(payload: OwnerLogin):
         raise HTTPException(status_code=401, detail=generic_error)
     if not bcrypt.checkpw(payload.pin.encode(), biz["owner_pin_hash"].encode()):
         raise HTTPException(status_code=401, detail=generic_error)
-    return serialize_business(biz)
+    token = await create_session(biz["_id"])
+    return {"token": token, "business": serialize_business(biz)}
 
 
 def serialize_employee(emp: dict) -> dict:
@@ -281,17 +316,14 @@ class EmployeeCreate(BaseModel):
         return v
 
 
-@api_router.get("/businesses/{business_id}/employees")
-async def list_employees(business_id: str):
-    biz = await db.businesses.find_one({"_id": business_id})
-    if not biz:
-        raise HTTPException(status_code=404, detail="Usaha tidak ditemukan")
+@api_router.get("/employees")
+async def list_employees(business_id: str = Depends(get_current_business_id)):
     employees = await db.employees.find({"business_id": business_id}).sort("created_at", 1).to_list(1000)
     return [serialize_employee(e) for e in employees]
 
 
-@api_router.post("/businesses/{business_id}/employees")
-async def create_employee(business_id: str, payload: EmployeeCreate):
+@api_router.post("/employees")
+async def create_employee(payload: EmployeeCreate, business_id: str = Depends(get_current_business_id)):
     biz = await db.businesses.find_one({"_id": business_id})
     if not biz:
         raise HTTPException(status_code=404, detail="Usaha tidak ditemukan")

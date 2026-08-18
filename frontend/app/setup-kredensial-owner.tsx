@@ -43,7 +43,7 @@ export default function SetupKredensialOwner() {
         setError(data.detail || "Gagal menyimpan kredensial");
         return;
       }
-      await setOwnerSession(data.id, true);
+      await setOwnerSession(data.token, data.business.id, true);
       router.replace("/dashboard-owner");
     } catch {
       setError("Gagal terhubung ke server, cek koneksi kamu");

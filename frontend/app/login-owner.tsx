@@ -35,7 +35,7 @@ export default function LoginOwner() {
         setError(data.detail || "Gagal masuk, coba lagi");
         return;
       }
-      await setOwnerSession(data.id, rememberMe);
+      await setOwnerSession(data.token, data.business.id, rememberMe);
       router.replace("/dashboard-owner");
     } catch {
       setError("Gagal terhubung ke server, cek koneksi kamu");
