@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Icon } from "@/src/components/Icon";
@@ -88,6 +88,12 @@ export default function DashboardOwner() {
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
+        <Image
+          source={require("@/assets/images/banner-dashboard.png")}
+          style={styles.banner}
+          resizeMode="cover"
+        />
+
         <Text style={styles.sectionLabel}>Hari Ini</Text>
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
@@ -189,6 +195,7 @@ const styles = StyleSheet.create({
   date: { fontSize: 12, color: "#fff", opacity: 0.75 },
   bellWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
   body: { padding: 20, marginTop: -12 },
+  banner: { width: "100%", aspectRatio: 1672 / 941, borderRadius: 16, marginBottom: 20, backgroundColor: C.bg },
   sectionLabel: { fontSize: 13, fontWeight: "700", color: C.text, marginBottom: 10, marginTop: 4 },
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   linkText: { color: C.navy, fontWeight: "600", fontSize: 12.5 },
