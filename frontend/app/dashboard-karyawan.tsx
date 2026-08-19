@@ -107,6 +107,17 @@ export default function DashboardKaryawan() {
           <Text style={styles.cardLabel}>Jadwal Kerja</Text>
           <Text style={styles.shiftValue}>{shiftLabel}</Text>
         </View>
+
+        <Pressable testID="link-riwayat-absensi" onPress={() => router.push("/riwayat-absensi")} style={styles.listRow}>
+          <View style={styles.listIconWrap}>
+            <Icon name="time-outline" color={C.navy} size={20} />
+          </View>
+          <View style={styles.flex1}>
+            <Text style={styles.listTitle}>Riwayat Absensi</Text>
+            <Text style={styles.listSubtitle}>Lihat catatan absensi Anda</Text>
+          </View>
+          <Icon name="chevron-forward" color={C.textMuted} size={18} />
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -134,4 +145,8 @@ const styles = StyleSheet.create({
   absenBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   pressed: { opacity: 0.85 },
   shiftValue: { fontSize: 16, fontWeight: "700", color: C.text },
+  listRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 },
+  listIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" },
+  listTitle: { fontSize: 14, fontWeight: "700", color: C.text, marginBottom: 2 },
+  listSubtitle: { fontSize: 12, color: C.textMuted },
 });

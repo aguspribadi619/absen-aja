@@ -1,4 +1,5 @@
 const DAYS = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+const DAYS_SHORT = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
@@ -35,6 +36,16 @@ export function formatWibShortDate(iso: string): string {
 export function formatWibTime(iso: string): string {
   const p = toWibParts(iso);
   return `${pad2(p.hours)}:${pad2(p.minutes)}:${pad2(p.seconds)}`;
+}
+
+export function formatWibHM(iso: string): string {
+  const p = toWibParts(iso);
+  return `${pad2(p.hours)}:${pad2(p.minutes)}`;
+}
+
+export function formatWibDayBox(iso: string): { day: string; abbr: string } {
+  const p = toWibParts(iso);
+  return { day: String(p.date), abbr: DAYS_SHORT[p.day] };
 }
 
 export function formatRupiah(amount: number): string {

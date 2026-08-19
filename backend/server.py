@@ -534,6 +534,29 @@ async def owner_dashboard(business_id: str = Depends(get_current_business_id)):
     }
 
 
+# Poin 13: "list sederhana, belum perlu filter bulan" -- jadi cuma balikin
+# record yang beneran ada, gak nyintesis baris "Tidak hadir" buat hari yang
+# gak ada absensinya (itu butuh nyocokin ke work_days, di luar scope "sederhana").
+@api_router.get("/attendance/me")
+async def list_my_attendance(current=Depends(get_current_employee)):
+    business_id, employee_id = current
+    records = await db.attendance.find({
+        "business_id": business_id,
+        "employee_id": employee_id,
+        "type": "masuk",
+    }).sort("server_timestamp", -1).to_list(1000)
+    return [
+        {
+            "id": r["_id"],
+            "server_timestamp": r["server_timestamp"],
+            "minutes_late": r.get("minutes_late", 0),
+            "penalty_amount": r.get("penalty_amount", 0),
+            "status": "terlambat" if r.get("minutes_late", 0) > 0 else "tepat_waktu",
+        }
+        for r in records
+    ]
+
+
 app.include_router(api_router)
 
 app.add_middleware(
