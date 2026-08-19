@@ -42,7 +42,13 @@
           "photosPermission": "Dipakai buat pilih logo usaha kamu."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Dipakai buat ambil foto bukti absen kamu."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

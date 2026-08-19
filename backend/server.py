@@ -438,6 +438,74 @@ async def get_attendance_today(current=Depends(get_current_employee)):
     return {"attended_today": bool(record)}
 
 
+# Aturan denda Phase 1: satu tarif flat per menit terlambat, gak ada tier/
+# kustomisasi per-owner (itu Phase 2, brief section 6). Angka ini gampang
+# diubah nanti kalau ternyata gak sesuai kebutuhan pengguna.
+PENALTY_PER_MINUTE_LATE = 1000
+
+
+class AttendanceCreate(BaseModel):
+    photo_data_uri: str
+    client_timestamp: Optional[str] = None
+
+    @field_validator("photo_data_uri")
+    @classmethod
+    def validate_photo(cls, v: str) -> str:
+        if not v or not v.startswith("data:image/"):
+            raise ValueError("Foto tidak valid")
+        if len(v) > MAX_LOGO_BYTES:
+            raise ValueError("Ukuran foto terlalu besar")
+        return v
+
+
+@api_router.post("/attendance")
+async def create_attendance(payload: AttendanceCreate, current=Depends(get_current_employee)):
+    business_id, employee_id = current
+    biz = await db.businesses.find_one({"_id": business_id})
+    if not biz:
+        raise HTTPException(status_code=404, detail="Usaha tidak ditemukan")
+
+    start_iso, end_iso = wib_today_bounds_utc()
+    existing = await db.attendance.find_one({
+        "business_id": business_id,
+        "employee_id": employee_id,
+        "type": "masuk",
+        "server_timestamp": {"$gte": start_iso, "$lt": end_iso},
+    })
+    if existing:
+        raise HTTPException(status_code=409, detail="Kamu sudah absen masuk hari ini")
+
+    # Server timestamp dipakai buat hitung keterlambatan, bukan jam device
+    # (aturan keras section 9) -- client_timestamp cuma disimpan buat referensi.
+    now_utc = datetime.now(timezone.utc)
+    now_wib = now_utc + WIB_OFFSET
+    start_h, start_m = (int(x) for x in biz["work_start"].split(":"))
+    scheduled_wib = now_wib.replace(hour=start_h, minute=start_m, second=0, microsecond=0)
+    minutes_late = max(0, int((now_wib - scheduled_wib).total_seconds() // 60))
+    penalty_amount = minutes_late * PENALTY_PER_MINUTE_LATE
+
+    record = {
+        "_id": str(uuid.uuid4()),
+        "business_id": business_id,
+        "employee_id": employee_id,
+        "type": "masuk",
+        "photo_data_uri": payload.photo_data_uri,
+        "client_timestamp": payload.client_timestamp,
+        "server_timestamp": now_utc.isoformat(),
+        "minutes_late": minutes_late,
+        "penalty_amount": penalty_amount,
+        "synced": True,
+    }
+    await db.attendance.insert_one(record)
+    return {
+        "id": record["_id"],
+        "server_timestamp": record["server_timestamp"],
+        "minutes_late": minutes_late,
+        "penalty_amount": penalty_amount,
+        "status": "terlambat" if minutes_late > 0 else "tepat_waktu",
+    }
+
+
 app.include_router(api_router)
 
 app.add_middleware(
