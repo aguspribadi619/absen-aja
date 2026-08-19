@@ -80,9 +80,9 @@ export default function DashboardKaryawan() {
             <Text style={styles.bizName}>{me.business.name}</Text>
             <Text style={styles.date}>{formatIndonesianDate(new Date())}</Text>
           </View>
-          <View style={styles.bellWrap}>
-            <Icon name="notifications-outline" color="#fff" size={20} />
-          </View>
+          <Pressable testID="btn-akun" onPress={() => router.push("/akun")} style={styles.bellWrap}>
+            <Icon name="person-circle-outline" color="#fff" size={22} />
+          </Pressable>
         </View>
       </View>
 
