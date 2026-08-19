@@ -48,6 +48,13 @@ export function formatWibDayBox(iso: string): { day: string; abbr: string } {
   return { day: String(p.date), abbr: DAYS_SHORT[p.day] };
 }
 
+export function greetingByTime(date: Date = new Date()): string {
+  const h = date.getHours();
+  if (h < 11) return "Selamat pagi";
+  if (h < 18) return "Selamat siang";
+  return "Selamat malam";
+}
+
 export function formatRupiah(amount: number): string {
   const rounded = Math.round(amount).toString();
   const withSeparators = rounded.replace(/\B(?=(\d{3})+(?!\d))/g, ".");

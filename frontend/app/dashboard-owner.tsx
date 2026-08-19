@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Icon } from "@/src/components/Icon";
 import { OwnerBottomNav } from "@/src/components/OwnerBottomNav";
 import { authHeaders } from "@/src/utils/session";
-import { formatIndonesianDate, formatRupiah, formatWibHM } from "@/src/utils/date";
+import { formatIndonesianDate, formatRupiah, formatWibHM, greetingByTime } from "@/src/utils/date";
 import { C } from "@/src/theme";
 
 const BACKEND = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -18,7 +18,7 @@ type RecentActivity = {
 };
 
 type Dashboard = {
-  business: { name: string };
+  business: { name: string; owner_name?: string | null };
   hadir: number;
   terlambat: number;
   belum_absen: number;
@@ -73,27 +73,35 @@ export default function DashboardOwner() {
     );
   }
 
+  const greeting = greetingByTime();
+  const ownerName = data.business.owner_name;
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.flex1}>
-            <Text style={styles.bizName}>{data.business.name}</Text>
-            <Text style={styles.date}>{formatIndonesianDate(new Date())}</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.hero}>
+          <Image
+            source={require("@/assets/images/banner-dashboard.png")}
+            style={styles.heroBg}
+            resizeMode="cover"
+          />
+          <View style={styles.heroContent}>
+            <View style={styles.heroTopRow}>
+              <View style={styles.flex1}>
+                <Text style={styles.greeting} numberOfLines={1}>
+                  {greeting}{ownerName ? `, ${ownerName}` : ""}
+                </Text>
+                <Text style={styles.bizName} numberOfLines={1}>{data.business.name}</Text>
+                <Text style={styles.date}>{formatIndonesianDate(new Date())}</Text>
+              </View>
+              <Pressable testID="btn-akun" onPress={() => router.push("/akun")} style={styles.bellWrap}>
+                <Icon name="person-circle-outline" color={C.navy} size={22} />
+              </Pressable>
+            </View>
           </View>
-          <Pressable testID="btn-akun" onPress={() => router.push("/akun")} style={styles.bellWrap}>
-            <Icon name="person-circle-outline" color="#fff" size={22} />
-          </Pressable>
         </View>
-      </View>
 
-      <ScrollView contentContainerStyle={styles.body}>
-        <Image
-          source={require("@/assets/images/banner-dashboard.png")}
-          style={styles.banner}
-          resizeMode="cover"
-        />
-
+        <View style={styles.body}>
         <Text style={styles.sectionLabel}>Hari Ini</Text>
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
@@ -163,6 +171,7 @@ export default function DashboardOwner() {
             })}
           </View>
         )}
+        </View>
       </ScrollView>
 
       <Modal visible={showDenda} transparent animationType="fade" onRequestClose={() => setShowDenda(false)}>
@@ -188,14 +197,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.card },
   centerFill: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   errorText: { color: C.danger, fontSize: 14, textAlign: "center" },
-  header: { backgroundColor: C.navy, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 },
-  headerRow: { flexDirection: "row", alignItems: "flex-start" },
+  scrollContent: { paddingBottom: 20 },
   flex1: { flex: 1 },
-  bizName: { fontSize: 19, fontWeight: "700", color: "#fff", marginBottom: 4 },
-  date: { fontSize: 12, color: "#fff", opacity: 0.75 },
-  bellWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
-  body: { padding: 20, marginTop: -12 },
-  banner: { width: "100%", aspectRatio: 1672 / 941, borderRadius: 16, marginBottom: 20, backgroundColor: C.bg },
+  hero: { width: "100%", overflow: "hidden", position: "relative", backgroundColor: C.bg },
+  heroBg: { width: "100%", aspectRatio: 2 },
+  heroContent: { position: "absolute", top: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 16 },
+  heroTopRow: { flexDirection: "row", alignItems: "flex-start" },
+  greeting: { fontSize: 12.5, fontWeight: "700", color: C.navy, marginBottom: 2 },
+  bizName: { fontSize: 18, fontWeight: "800", color: C.navy, marginBottom: 3 },
+  date: { fontSize: 11.5, color: C.navy, opacity: 0.75 },
+  bellWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.85)", alignItems: "center", justifyContent: "center" },
+  body: { padding: 20 },
   sectionLabel: { fontSize: 13, fontWeight: "700", color: C.text, marginBottom: 10, marginTop: 4 },
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   linkText: { color: C.navy, fontWeight: "600", fontSize: 12.5 },
