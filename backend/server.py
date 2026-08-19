@@ -552,12 +552,31 @@ async def owner_dashboard(business_id: str = Depends(get_current_business_id)):
     belum_absen = max(0, total_employees - hadir)
     total_denda = sum(r.get("penalty_amount", 0) for r in today_records)
 
+    # Section "Aktivitas Terbaru" -- beberapa entri absen masuk paling baru hari
+    # ini, join manual ke nama karyawan (Mongo gak punya JOIN kayak SQL).
+    recent_sorted = sorted(today_records, key=lambda r: r["server_timestamp"], reverse=True)[:5]
+    emp_ids = list({r["employee_id"] for r in recent_sorted})
+    emp_names = {}
+    if emp_ids:
+        emps = await db.employees.find({"_id": {"$in": emp_ids}}).to_list(len(emp_ids))
+        emp_names = {e["_id"]: e["name"] for e in emps}
+    recent_activity = [
+        {
+            "employee_id": r["employee_id"],
+            "employee_name": emp_names.get(r["employee_id"], "?"),
+            "server_timestamp": r["server_timestamp"],
+            "status": "terlambat" if r.get("minutes_late", 0) > 0 else "tepat_waktu",
+        }
+        for r in recent_sorted
+    ]
+
     return {
         "business": serialize_business(biz),
         "hadir": hadir,
         "terlambat": terlambat,
         "belum_absen": belum_absen,
         "total_denda_hari_ini": total_denda,
+        "recent_activity": recent_activity,
     }
 
 

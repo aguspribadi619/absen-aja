@@ -37,6 +37,19 @@ export default function Akun() {
       <View style={styles.body}>
         <Text style={styles.roleLabel}>{role === "karyawan" ? "Masuk sebagai Karyawan" : "Masuk sebagai Owner"}</Text>
 
+        {role === "owner" && (
+          <Pressable testID="link-profil-usaha" onPress={() => router.push("/profil-usaha")} style={styles.row}>
+            <View style={styles.rowIconWrap}>
+              <Icon name="business-outline" color={C.navy} size={20} />
+            </View>
+            <View style={styles.flex1}>
+              <Text style={styles.rowTitle}>Profil Usaha</Text>
+              <Text style={styles.rowSubtitle}>Lihat nama, alamat, & Token Usaha</Text>
+            </View>
+            <Icon name="chevron-forward" color={C.textMuted} size={18} />
+          </Pressable>
+        )}
+
         <Pressable testID="btn-logout" onPress={() => setConfirmingLogout(true)} style={styles.row}>
           <View style={[styles.rowIconWrap, styles.rowIconWrapDanger]}>
             <Icon name="log-out-outline" color={C.danger} size={20} />

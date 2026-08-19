@@ -1,14 +1,21 @@
 import React, { useCallback, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Icon } from "@/src/components/Icon";
 import { OwnerBottomNav } from "@/src/components/OwnerBottomNav";
 import { authHeaders } from "@/src/utils/session";
-import { formatIndonesianDate, formatRupiah } from "@/src/utils/date";
+import { formatIndonesianDate, formatRupiah, formatWibHM } from "@/src/utils/date";
 import { C } from "@/src/theme";
 
 const BACKEND = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+type RecentActivity = {
+  employee_id: string;
+  employee_name: string;
+  server_timestamp: string;
+  status: "terlambat" | "tepat_waktu";
+};
 
 type Dashboard = {
   business: { name: string };
@@ -16,12 +23,14 @@ type Dashboard = {
   terlambat: number;
   belum_absen: number;
   total_denda_hari_ini: number;
+  recent_activity: RecentActivity[];
 };
 
 export default function DashboardOwner() {
   const router = useRouter();
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showDenda, setShowDenda] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -95,11 +104,6 @@ export default function DashboardOwner() {
           </View>
         </View>
 
-        <View style={styles.dendaCard}>
-          <Text style={styles.dendaLabel}>Total Denda Hari Ini</Text>
-          <Text style={styles.dendaValue}>{formatRupiah(data.total_denda_hari_ini)}</Text>
-        </View>
-
         <Text style={styles.sectionLabel}>Menu</Text>
         <View style={styles.menuGrid}>
           <Pressable testID="menu-karyawan" onPress={() => router.replace("/karyawan")} style={styles.menuTile}>
@@ -114,19 +118,60 @@ export default function DashboardOwner() {
             </View>
             <Text style={styles.menuLabel}>Absensi</Text>
           </Pressable>
+          <Pressable testID="menu-denda" onPress={() => setShowDenda(true)} style={styles.menuTile}>
+            <View style={styles.menuIconWrap}>
+              <Icon name="cash" color={C.navy} size={22} />
+            </View>
+            <Text style={styles.menuLabel}>Denda</Text>
+          </Pressable>
         </View>
 
-        <Pressable testID="link-profil-usaha" onPress={() => router.push("/profil-usaha")} style={styles.listRow}>
-          <View style={styles.listIconWrap}>
-            <Icon name="business-outline" color={C.navy} size={20} />
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionLabel}>Aktivitas Terbaru</Text>
+          <Pressable testID="link-lihat-semua-aktivitas" onPress={() => router.replace("/absensi-owner")}>
+            <Text style={styles.linkText}>Lihat Semua</Text>
+          </Pressable>
+        </View>
+
+        {data.recent_activity.length === 0 ? (
+          <View style={styles.emptyActivity}>
+            <Text style={styles.emptyActivityText}>Belum ada karyawan yang absen hari ini.</Text>
           </View>
-          <View style={styles.flex1}>
-            <Text style={styles.listTitle}>Profil Usaha</Text>
-            <Text style={styles.listSubtitle}>Lihat nama, alamat, & Token Usaha</Text>
+        ) : (
+          <View style={styles.activityCard}>
+            {data.recent_activity.map((item, idx) => {
+              const late = item.status === "terlambat";
+              return (
+                <View
+                  key={item.employee_id + item.server_timestamp}
+                  style={[styles.activityRow, idx < data.recent_activity.length - 1 && styles.activityRowDivider]}
+                >
+                  <View style={[styles.activityDot, late ? styles.activityDotLate : styles.activityDotOk]} />
+                  <Text style={styles.activityName} numberOfLines={1}>{item.employee_name}</Text>
+                  <Text style={[styles.activityStatus, late ? styles.activityStatusLate : styles.activityStatusOk]}>
+                    {late ? "Terlambat" : "Tepat waktu"}
+                  </Text>
+                  <Text style={styles.activityTime}>{formatWibHM(item.server_timestamp)}</Text>
+                </View>
+              );
+            })}
           </View>
-          <Icon name="chevron-forward" color={C.textMuted} size={18} />
-        </Pressable>
+        )}
       </ScrollView>
+
+      <Modal visible={showDenda} transparent animationType="fade" onRequestClose={() => setShowDenda(false)}>
+        <View style={styles.modalBackdrop}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowDenda(false)} />
+          <View style={styles.modalCard}>
+            <Text style={styles.modalLabel}>TOTAL DENDA HARI INI</Text>
+            <Text style={styles.modalValue}>{formatRupiah(data.total_denda_hari_ini)}</Text>
+            <Text style={styles.modalHint}>Pengaturan tarif & tier denda belum tersedia.</Text>
+            <Pressable testID="btn-tutup-denda" onPress={() => setShowDenda(false)} style={styles.modalBtn}>
+              <Text style={styles.modalBtnText}>Tutup</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       <OwnerBottomNav active="dashboard" />
     </SafeAreaView>
@@ -145,22 +190,37 @@ const styles = StyleSheet.create({
   bellWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
   body: { padding: 20, marginTop: -12 },
   sectionLabel: { fontSize: 13, fontWeight: "700", color: C.text, marginBottom: 10, marginTop: 4 },
-  statsRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  linkText: { color: C.navy, fontWeight: "600", fontSize: 12.5 },
+  statsRow: { flexDirection: "row", gap: 10, marginBottom: 20 },
   statBox: { flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, paddingVertical: 14, alignItems: "center" },
   statNumber: { fontSize: 22, fontWeight: "800", marginBottom: 2 },
   statHadir: { color: C.success },
   statTerlambat: { color: C.warning },
   statBelum: { color: C.neutral },
   statLabel: { fontSize: 11.5, color: C.textMuted },
-  dendaCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 16, marginBottom: 20 },
-  dendaLabel: { fontSize: 12, color: C.textMuted, marginBottom: 4 },
-  dendaValue: { fontSize: 20, fontWeight: "800", color: C.text },
-  menuGrid: { flexDirection: "row", gap: 12, marginBottom: 14 },
+  menuGrid: { flexDirection: "row", gap: 10, marginBottom: 20 },
   menuTile: { flex: 1, alignItems: "center", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, paddingVertical: 16 },
   menuIconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" },
   menuLabel: { fontSize: 12.5, fontWeight: "600", color: C.text },
-  listRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 },
-  listIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" },
-  listTitle: { fontSize: 14, fontWeight: "700", color: C.text, marginBottom: 2 },
-  listSubtitle: { fontSize: 12, color: C.textMuted },
+  emptyActivity: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 20, alignItems: "center" },
+  emptyActivityText: { color: C.textMuted, fontSize: 13 },
+  activityCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, paddingHorizontal: 16 },
+  activityRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 13 },
+  activityRowDivider: { borderBottomWidth: 1, borderBottomColor: C.bg },
+  activityDot: { width: 8, height: 8, borderRadius: 4 },
+  activityDotOk: { backgroundColor: C.success },
+  activityDotLate: { backgroundColor: C.danger },
+  activityName: { flex: 1, fontSize: 13.5, fontWeight: "600", color: C.text },
+  activityStatus: { fontSize: 11.5, fontWeight: "600" },
+  activityStatusOk: { color: C.success },
+  activityStatusLate: { color: C.danger },
+  activityTime: { fontSize: 12.5, color: C.textMuted, width: 44, textAlign: "right" },
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", alignItems: "center", justifyContent: "center", padding: 24 },
+  modalCard: { width: "100%", backgroundColor: "#fff", borderRadius: 16, padding: 20, alignItems: "center" },
+  modalLabel: { fontSize: 11, color: C.textMuted, letterSpacing: 0.5, marginBottom: 6 },
+  modalValue: { fontSize: 26, fontWeight: "800", color: C.text, marginBottom: 8 },
+  modalHint: { fontSize: 12, color: C.textMuted, textAlign: "center", marginBottom: 16 },
+  modalBtn: { alignSelf: "stretch", backgroundColor: C.navy, borderRadius: 12, paddingVertical: 12, alignItems: "center" },
+  modalBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 });
