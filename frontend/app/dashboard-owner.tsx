@@ -83,15 +83,11 @@ export default function DashboardOwner() {
           <Image
             source={require("@/assets/images/banner-dashboard.png")}
             style={styles.heroBg}
-            resizeMode="cover"
+            resizeMode="contain"
           />
           <View style={styles.heroContent}>
             <View style={styles.heroTopRow}>
-              <View style={styles.greetingPill}>
-                <Text style={styles.greeting} numberOfLines={1}>
-                  {greeting}{ownerName ? `, ${ownerName}` : ""}
-                </Text>
-              </View>
+              <View style={styles.flex1} />
               <Pressable testID="btn-akun" onPress={() => router.push("/akun")} style={styles.bellWrap}>
                 <Icon name="person-circle-outline" color={C.navy} size={22} />
               </Pressable>
@@ -100,6 +96,9 @@ export default function DashboardOwner() {
         </View>
 
         <View style={styles.body}>
+        <Text style={styles.greeting} numberOfLines={1}>
+          {greeting}{ownerName ? `, ${ownerName}` : ""}
+        </Text>
         <Text style={styles.bizName} numberOfLines={1}>{data.business.name}</Text>
         <Text style={styles.date}>{formatIndonesianDate(new Date())}</Text>
 
@@ -204,8 +203,7 @@ const styles = StyleSheet.create({
   heroBg: { width: "100%", height: 150 },
   heroContent: { position: "absolute", top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 16 },
   heroTopRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
-  greetingPill: { backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, maxWidth: "72%" },
-  greeting: { fontSize: 12.5, fontWeight: "700", color: C.navy },
+  greeting: { fontSize: 12.5, fontWeight: "700", color: C.navy, marginTop: 4, marginBottom: 2 },
   bizName: { fontSize: 19, fontWeight: "800", color: C.text, marginBottom: 3 },
   date: { fontSize: 12, color: C.textMuted, marginBottom: 4 },
   bellWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.9)", alignItems: "center", justifyContent: "center" },
