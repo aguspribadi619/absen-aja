@@ -12,7 +12,7 @@ import logging
 import uuid
 import bcrypt
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent
@@ -398,6 +398,44 @@ async def employee_login(payload: EmployeeLogin):
         raise HTTPException(status_code=401, detail=generic_error)
     session_token = await create_session(biz["_id"], employee_id=matched["_id"])
     return {"token": session_token, "business": serialize_business(biz), "employee": serialize_employee(matched)}
+
+
+@api_router.get("/employees/me")
+async def get_my_employee_info(current=Depends(get_current_employee)):
+    business_id, employee_id = current
+    emp = await db.employees.find_one({"_id": employee_id})
+    biz = await db.businesses.find_one({"_id": business_id})
+    if not emp or not biz:
+        raise HTTPException(status_code=404, detail="Data tidak ditemukan")
+    return {"employee": serialize_employee(emp), "business": serialize_business(biz)}
+
+
+# Phase 1 belum ada pengaturan timezone per-business, jadi "hari ini" buat
+# absensi diasumsikan WIB (UTC+7) buat semua business. Kalau ada business di
+# WITA/WIT, batas hari absennya bakal sedikit meleset -- item follow-up kalau
+# skala usaha di luar WIB beneran muncul.
+WIB_OFFSET = timedelta(hours=7)
+
+
+def wib_today_bounds_utc() -> tuple[str, str]:
+    now_wib = datetime.now(timezone.utc) + WIB_OFFSET
+    start_wib_naive = datetime(now_wib.year, now_wib.month, now_wib.day)
+    start_utc = start_wib_naive.replace(tzinfo=timezone.utc) - WIB_OFFSET
+    end_utc = start_utc + timedelta(days=1)
+    return start_utc.isoformat(), end_utc.isoformat()
+
+
+@api_router.get("/attendance/today")
+async def get_attendance_today(current=Depends(get_current_employee)):
+    business_id, employee_id = current
+    start_iso, end_iso = wib_today_bounds_utc()
+    record = await db.attendance.find_one({
+        "business_id": business_id,
+        "employee_id": employee_id,
+        "type": "masuk",
+        "server_timestamp": {"$gte": start_iso, "$lt": end_iso},
+    })
+    return {"attended_today": bool(record)}
 
 
 app.include_router(api_router)
