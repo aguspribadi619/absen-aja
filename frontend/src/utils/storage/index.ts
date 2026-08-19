@@ -22,6 +22,9 @@ import * as SecureStore from "expo-secure-store";
 
 import { AssertNoExtras, StorageBase, StorageItemValue } from "./storage-base";
 
+// Prefix for the AsyncStorage backup copy secure* keeps -- see secureGet/secureSet.
+const SECURE_BACKUP_PREFIX = "__secure_backup__:";
+
 export class Storage extends StorageBase {
   // General KV — backed by AsyncStorage.
   // `fallback` is required and returned on any miss/parse error — a missing key looks identical to a stored `null`.
@@ -63,15 +66,27 @@ export class Storage extends StorageBase {
 
   // Sensitive values — Keychain (iOS) / EncryptedSharedPreferences (Android).
   // Use these (not getItem) for auth tokens; whatever writes with secureSet must read with secureGet under the same key.
+  //
+  // Android's EncryptedSharedPreferences backend can silently fail to decrypt on
+  // read even after a successful write (Keystore corruption) -- observed on a real
+  // device as "ingat saya" never persisting a session. We keep a plaintext
+  // AsyncStorage backup written alongside every secureSet so secureGet still has
+  // something to fall back to when SecureStore comes back empty/throws.
   async secureGet<Fallback extends StorageItemValue>(
     key: string,
     fallback: Fallback,
   ): Promise<Fallback | null> {
     try {
       const raw = await SecureStore.getItemAsync(key);
-      return this.retrieve(raw, fallback);
+      if (raw !== null) return this.retrieve(raw, fallback);
     } catch (e) {
       this.warn("secureGet", key, e);
+    }
+    try {
+      const raw = await AsyncStorage.getItem(SECURE_BACKUP_PREFIX + key);
+      return this.retrieve(raw, fallback);
+    } catch (e) {
+      this.warn("secureGet(backup)", key, e);
       return fallback;
     }
   }
@@ -80,23 +95,36 @@ export class Storage extends StorageBase {
     key: string,
     value: Value,
   ): Promise<boolean> {
+    const json = JSON.stringify(value);
+    let ok = true;
     try {
-      await SecureStore.setItemAsync(key, JSON.stringify(value));
-      return true;
+      await SecureStore.setItemAsync(key, json);
     } catch (e) {
       this.warn("secureSet", key, e);
-      return false;
+      ok = false;
     }
+    try {
+      await AsyncStorage.setItem(SECURE_BACKUP_PREFIX + key, json);
+    } catch (e) {
+      this.warn("secureSet(backup)", key, e);
+    }
+    return ok;
   }
 
   async secureRemove(key: string): Promise<boolean> {
+    let ok = true;
     try {
       await SecureStore.deleteItemAsync(key);
-      return true;
     } catch (e) {
       this.warn("secureRemove", key, e);
-      return false;
+      ok = false;
     }
+    try {
+      await AsyncStorage.removeItem(SECURE_BACKUP_PREFIX + key);
+    } catch (e) {
+      this.warn("secureRemove(backup)", key, e);
+    }
+    return ok;
   }
 }
 
