@@ -15,6 +15,7 @@ const BACKEND = process.env.EXPO_PUBLIC_BACKEND_URL;
 export default function SetupKredensialOwner() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const [ownerName, setOwnerName] = useState("");
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
@@ -28,6 +29,7 @@ export default function SetupKredensialOwner() {
 
   const submit = async () => {
     setError(null);
+    if (!ownerName.trim()) return setError("Nama pemilik wajib diisi");
     if (!phone.trim()) return setError("Nomor HP/Email wajib diisi");
     if (pin.length < 4) return setError("PIN minimal 4 karakter");
     if (pin !== confirmPin) return setError("Konfirmasi PIN tidak sama");
@@ -36,7 +38,7 @@ export default function SetupKredensialOwner() {
       const res = await fetch(`${BACKEND}/api/businesses/${id}/owner-credentials`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim(), pin }),
+        body: JSON.stringify({ owner_name: ownerName.trim(), phone: phone.trim(), pin }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -64,6 +66,18 @@ export default function SetupKredensialOwner() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Nama Pemilik</Text>
+          <TextInput
+            testID="input-owner-name"
+            style={styles.input}
+            value={ownerName}
+            onChangeText={setOwnerName}
+            placeholder="Nama kamu"
+            placeholderTextColor={C.textMuted}
+          />
+        </View>
 
         <View style={styles.field}>
           <Text style={styles.label}>Nomor HP / Email</Text>

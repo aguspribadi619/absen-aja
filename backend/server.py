@@ -282,8 +282,17 @@ PIN_RE = re.compile(r"^\S{4,20}$")
 
 
 class OwnerCredentials(BaseModel):
+    owner_name: str
     phone: str
     pin: str
+
+    @field_validator("owner_name")
+    @classmethod
+    def validate_owner_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Nama pemilik wajib diisi")
+        return v
 
     @field_validator("phone")
     @classmethod
@@ -313,7 +322,7 @@ async def set_owner_credentials(business_id: str, payload: OwnerCredentials):
     now = datetime.now(timezone.utc).isoformat()
     await db.businesses.update_one(
         {"_id": business_id},
-        {"$set": {"owner_phone": payload.phone, "owner_pin_hash": pin_hash, "updated_at": now}},
+        {"$set": {"owner_name": payload.owner_name, "owner_phone": payload.phone, "owner_pin_hash": pin_hash, "updated_at": now}},
     )
     biz = await db.businesses.find_one({"_id": business_id})
     token = await create_session(business_id)
