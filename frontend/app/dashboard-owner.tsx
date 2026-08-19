@@ -87,12 +87,10 @@ export default function DashboardOwner() {
           />
           <View style={styles.heroContent}>
             <View style={styles.heroTopRow}>
-              <View style={styles.flex1}>
+              <View style={styles.greetingPill}>
                 <Text style={styles.greeting} numberOfLines={1}>
                   {greeting}{ownerName ? `, ${ownerName}` : ""}
                 </Text>
-                <Text style={styles.bizName} numberOfLines={1}>{data.business.name}</Text>
-                <Text style={styles.date}>{formatIndonesianDate(new Date())}</Text>
               </View>
               <Pressable testID="btn-akun" onPress={() => router.push("/akun")} style={styles.bellWrap}>
                 <Icon name="person-circle-outline" color={C.navy} size={22} />
@@ -102,6 +100,9 @@ export default function DashboardOwner() {
         </View>
 
         <View style={styles.body}>
+        <Text style={styles.bizName} numberOfLines={1}>{data.business.name}</Text>
+        <Text style={styles.date}>{formatIndonesianDate(new Date())}</Text>
+
         <Text style={styles.sectionLabel}>Hari Ini</Text>
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
@@ -201,12 +202,13 @@ const styles = StyleSheet.create({
   flex1: { flex: 1 },
   hero: { width: "100%", overflow: "hidden", position: "relative", backgroundColor: C.bg },
   heroBg: { width: "100%", height: 150 },
-  heroContent: { position: "absolute", top: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 16 },
-  heroTopRow: { flexDirection: "row", alignItems: "flex-start" },
-  greeting: { fontSize: 12.5, fontWeight: "700", color: C.navy, marginBottom: 2 },
-  bizName: { fontSize: 18, fontWeight: "800", color: C.navy, marginBottom: 3 },
-  date: { fontSize: 11.5, color: C.navy, opacity: 0.75 },
-  bellWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.85)", alignItems: "center", justifyContent: "center" },
+  heroContent: { position: "absolute", top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 16 },
+  heroTopRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
+  greetingPill: { backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, maxWidth: "72%" },
+  greeting: { fontSize: 12.5, fontWeight: "700", color: C.navy },
+  bizName: { fontSize: 19, fontWeight: "800", color: C.text, marginBottom: 3 },
+  date: { fontSize: 12, color: C.textMuted, marginBottom: 4 },
+  bellWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.9)", alignItems: "center", justifyContent: "center" },
   body: { padding: 20 },
   sectionLabel: { fontSize: 13, fontWeight: "700", color: C.text, marginBottom: 10, marginTop: 4 },
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
