@@ -115,6 +115,17 @@ export default function DashboardOwner() {
             <Text style={styles.menuLabel}>Absensi</Text>
           </Pressable>
         </View>
+
+        <Pressable testID="link-profil-usaha" onPress={() => router.push("/profil-usaha")} style={styles.listRow}>
+          <View style={styles.listIconWrap}>
+            <Icon name="business-outline" color={C.navy} size={20} />
+          </View>
+          <View style={styles.flex1}>
+            <Text style={styles.listTitle}>Profil Usaha</Text>
+            <Text style={styles.listSubtitle}>Lihat nama, alamat, & Token Usaha</Text>
+          </View>
+          <Icon name="chevron-forward" color={C.textMuted} size={18} />
+        </Pressable>
       </ScrollView>
 
       <OwnerBottomNav active="dashboard" />
@@ -144,8 +155,12 @@ const styles = StyleSheet.create({
   dendaCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 16, marginBottom: 20 },
   dendaLabel: { fontSize: 12, color: C.textMuted, marginBottom: 4 },
   dendaValue: { fontSize: 20, fontWeight: "800", color: C.text },
-  menuGrid: { flexDirection: "row", gap: 12 },
+  menuGrid: { flexDirection: "row", gap: 12, marginBottom: 14 },
   menuTile: { flex: 1, alignItems: "center", gap: 8, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, paddingVertical: 16 },
   menuIconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" },
   menuLabel: { fontSize: 12.5, fontWeight: "600", color: C.text },
+  listRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 },
+  listIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.bg, alignItems: "center", justifyContent: "center" },
+  listTitle: { fontSize: 14, fontWeight: "700", color: C.text, marginBottom: 2 },
+  listSubtitle: { fontSize: 12, color: C.textMuted },
 });

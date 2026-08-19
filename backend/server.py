@@ -227,6 +227,20 @@ async def create_business(payload: BusinessCreate):
     return serialize_business(business)
 
 
+# Owner-scoped (business_id dari sesi, bukan path param) -- dipakai layar Profil
+# Usaha, satu-satunya cara owner lihat lagi Token Usaha setelah signup. Beda dari
+# GET /businesses/{business_id} di bawah yang publik/tanpa auth (dipakai pas
+# konfirmasi-usaha, sebelum kredensial owner dibuat jadi belum ada sesi).
+# HARUS didaftarkan sebelum /businesses/{business_id} -- kalau kebalik, "me" bakal
+# ketangkep sebagai business_id oleh route path-param itu duluan.
+@api_router.get("/businesses/me")
+async def get_my_business(business_id: str = Depends(get_current_business_id)):
+    biz = await db.businesses.find_one({"_id": business_id})
+    if not biz:
+        raise HTTPException(status_code=404, detail="Usaha tidak ditemukan")
+    return serialize_business(biz)
+
+
 @api_router.get("/businesses/{business_id}")
 async def get_business(business_id: str):
     biz = await db.businesses.find_one({"_id": business_id})
