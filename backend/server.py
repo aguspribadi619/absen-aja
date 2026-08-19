@@ -444,12 +444,25 @@ async def get_my_employee_info(current=Depends(get_current_employee)):
 WIB_OFFSET = timedelta(hours=7)
 
 
-def wib_today_bounds_utc() -> tuple[str, str]:
-    now_wib = datetime.now(timezone.utc) + WIB_OFFSET
-    start_wib_naive = datetime(now_wib.year, now_wib.month, now_wib.day)
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def wib_day_bounds_utc(date_str: str) -> tuple[str, str]:
+    if not DATE_RE.match(date_str):
+        raise HTTPException(status_code=422, detail="Format tanggal tidak valid, gunakan YYYY-MM-DD")
+    try:
+        y, m, d = (int(x) for x in date_str.split("-"))
+        start_wib_naive = datetime(y, m, d)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Tanggal tidak valid")
     start_utc = start_wib_naive.replace(tzinfo=timezone.utc) - WIB_OFFSET
     end_utc = start_utc + timedelta(days=1)
     return start_utc.isoformat(), end_utc.isoformat()
+
+
+def wib_today_bounds_utc() -> tuple[str, str]:
+    now_wib = datetime.now(timezone.utc) + WIB_OFFSET
+    return wib_day_bounds_utc(f"{now_wib.year:04d}-{now_wib.month:02d}-{now_wib.day:02d}")
 
 
 @api_router.get("/attendance/today")
@@ -601,6 +614,53 @@ async def list_my_attendance(current=Depends(get_current_employee)):
         }
         for r in records
     ]
+
+
+# Poin 4 (revisi Dashboard Owner): tile Absensi perlu bisa browse SATU tanggal
+# lain (kemarin, dst), bukan cuma hari ini. Agregasi lintas banyak hari/export
+# tetap Phase 2 ("Laporan Bulanan"), jadi endpoint ini sengaja dibatasi satu
+# tanggal per request.
+@api_router.get("/attendance/by-date")
+async def list_attendance_by_date(date: str, business_id: str = Depends(get_current_business_id)):
+    start_iso, end_iso = wib_day_bounds_utc(date)
+    employees = await db.employees.find({"business_id": business_id, "is_active": True}).sort("created_at", 1).to_list(1000)
+    records = await db.attendance.find({
+        "business_id": business_id,
+        "type": "masuk",
+        "server_timestamp": {"$gte": start_iso, "$lt": end_iso},
+    }).to_list(1000)
+    record_by_employee = {r["employee_id"]: r for r in records}
+
+    items = []
+    for emp in employees:
+        r = record_by_employee.get(emp["_id"])
+        if r:
+            items.append({
+                "employee_id": emp["_id"],
+                "employee_name": emp["name"],
+                "status": "terlambat" if r.get("minutes_late", 0) > 0 else "tepat_waktu",
+                "server_timestamp": r["server_timestamp"],
+                "minutes_late": r.get("minutes_late", 0),
+                "penalty_amount": r.get("penalty_amount", 0),
+            })
+        else:
+            items.append({
+                "employee_id": emp["_id"],
+                "employee_name": emp["name"],
+                "status": "belum_absen",
+                "server_timestamp": None,
+                "minutes_late": 0,
+                "penalty_amount": 0,
+            })
+
+    return {
+        "date": date,
+        "items": items,
+        "hadir": sum(1 for i in items if i["status"] != "belum_absen"),
+        "terlambat": sum(1 for i in items if i["status"] == "terlambat"),
+        "belum_absen": sum(1 for i in items if i["status"] == "belum_absen"),
+        "total_denda": sum(i["penalty_amount"] for i in items),
+    }
 
 
 app.include_router(api_router)
