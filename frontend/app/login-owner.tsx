@@ -36,6 +36,7 @@ export default function LoginOwner() {
         return;
       }
       await setOwnerSession(data.token, data.business.id, rememberMe);
+      router.dismissAll();
       router.replace("/dashboard-owner");
     } catch {
       setError("Gagal terhubung ke server, cek koneksi kamu");

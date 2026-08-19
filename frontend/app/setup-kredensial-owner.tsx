@@ -44,6 +44,7 @@ export default function SetupKredensialOwner() {
         return;
       }
       await setOwnerSession(data.token, data.business.id, true);
+      router.dismissAll();
       router.replace("/dashboard-owner");
     } catch {
       setError("Gagal terhubung ke server, cek koneksi kamu");

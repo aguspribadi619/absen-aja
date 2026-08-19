@@ -38,6 +38,7 @@ export default function LoginKaryawan() {
         return;
       }
       await setKaryawanSession(data.token, data.business.id, data.employee.id, rememberMe);
+      router.dismissAll();
       router.replace("/dashboard-karyawan");
     } catch {
       setError("Gagal terhubung ke server, cek koneksi kamu");
