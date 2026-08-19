@@ -16,11 +16,6 @@ export default function Akun() {
     (async () => setRole(await getRole()))();
   }, []);
 
-  const gantiAkun = async () => {
-    await clearSession();
-    router.replace(role === "karyawan" ? "/login-karyawan" : "/login-owner");
-  };
-
   const logout = async () => {
     await clearSession();
     setConfirmingLogout(false);
@@ -33,17 +28,6 @@ export default function Akun() {
 
       <View style={styles.body}>
         <Text style={styles.roleLabel}>{role === "karyawan" ? "Masuk sebagai Karyawan" : "Masuk sebagai Owner"}</Text>
-
-        <Pressable testID="btn-ganti-akun" onPress={gantiAkun} style={styles.row}>
-          <View style={styles.rowIconWrap}>
-            <Icon name="swap-horizontal" color={C.navy} size={20} />
-          </View>
-          <View style={styles.flex1}>
-            <Text style={styles.rowTitle}>Ganti Akun</Text>
-            <Text style={styles.rowSubtitle}>Keluar dan masuk dengan akun lain</Text>
-          </View>
-          <Icon name="chevron-forward" color={C.textMuted} size={18} />
-        </Pressable>
 
         <Pressable testID="btn-logout" onPress={() => setConfirmingLogout(true)} style={styles.row}>
           <View style={[styles.rowIconWrap, styles.rowIconWrapDanger]}>
