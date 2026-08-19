@@ -4,8 +4,10 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Icon } from "@/src/components/Icon";
 import { Header } from "@/src/components/Header";
-import { clearSession, getRole, SessionRole } from "@/src/utils/session";
+import { authHeaders, clearSession, getRole, SessionRole } from "@/src/utils/session";
 import { C } from "@/src/theme";
+
+const BACKEND = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function Akun() {
   const router = useRouter();
@@ -17,6 +19,12 @@ export default function Akun() {
   }, []);
 
   const logout = async () => {
+    try {
+      await fetch(`${BACKEND}/api/sessions`, { method: "DELETE", headers: await authHeaders() });
+    } catch {
+      // Best-effort -- token lokal tetap dihapus di bawah, jadi klien tetap keluar
+      // walau baris sesinya belum sempat kehapus di server (mis. lagi offline).
+    }
     await clearSession();
     setConfirmingLogout(false);
     router.replace("/");

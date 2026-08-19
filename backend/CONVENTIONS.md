@@ -96,8 +96,12 @@ dipakai ulang (karena pengecekan cuma against `is_active: true`).
 
 ### Keterbatasan yang disengaja (Phase 1)
 
-- Token sesi **tidak expire**. Cukup buat MVP; kadaluarsa token jadi
-  item Phase 2.
-- Belum ada endpoint logout (belum ada tombol logout di UI juga).
-  Kalau ditambah nanti: `DELETE /api/sessions` (hapus token dari
-  koleksi `sessions`) + hapus token tersimpan di frontend.
+- Token sesi **tidak expire** selama masih ada di koleksi `sessions`.
+  Cukup buat MVP; kadaluarsa token jadi item Phase 2.
+- Logout (`DELETE /api/sessions`, dipanggil dari layar Akun) hapus
+  baris sesinya dari koleksi `sessions` DAN frontend hapus token
+  tersimpannya (`clearSession()`) -- dua-duanya, bukan salah satu.
+  Endpoint ini sengaja gak pakai `get_current_business_id`/
+  `get_current_employee` karena harus jalan buat kedua jenis sesi;
+  dia baca token dari header langsung dan idempotent (token yang gak
+  ada/udah kehapus tetap balas 200).

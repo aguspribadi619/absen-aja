@@ -99,6 +99,19 @@ async def get_current_employee(authorization: str = Header(default="")) -> tuple
     return session["business_id"], session["employee_id"]
 
 
+# Logout -- kerja buat sesi owner MAUPUN karyawan (gak pakai kedua dependency di
+# atas karena keduanya nolak salah satu jenis sesi). Idempotent: token yang gak
+# ada/udah kehapus tetap balas 200, bukan error, karena hasil akhirnya sama
+# (klien gak punya sesi valid lagi).
+@api_router.delete("/sessions")
+async def logout(authorization: str = Header(default="")):
+    if authorization.startswith("Bearer "):
+        token = authorization.removeprefix("Bearer ").strip()
+        if token:
+            await db.sessions.delete_one({"_id": token})
+    return {"ok": True}
+
+
 @api_router.get("/")
 async def root():
     return {"message": "Absen Aja API"}
