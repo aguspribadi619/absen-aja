@@ -13,7 +13,7 @@ export default function LoginOwner() {
   const router = useRouter();
   const [identifier, setIdentifier] = useState("");
   const [pin, setPin] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
