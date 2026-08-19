@@ -11,34 +11,41 @@ pun yang tahu/nebak sebuah ID bisa baca/tulis data usaha orang lain.
 
 ### Pola: session token + dependency
 
-1. Setiap login yang berhasil (owner sekarang, karyawan nanti di poin 7)
-   membuat baris di koleksi `sessions`: `{_id: <token opaque>, business_id, created_at}`
-   lewat `create_session(business_id)`, dan mengembalikannya ke client
-   sebagai `{"token": ..., "business": {...}}`.
+1. Setiap login yang berhasil (owner via `/owners/login` atau
+   `/businesses/{id}/owner-credentials`, karyawan via `/employees/login`)
+   membuat baris di koleksi `sessions` lewat `create_session(business_id,
+   employee_id=None)` dan mengembalikan tokennya ke client sebagai
+   `{"token": ..., "business": {...}}` (owner) atau `{"token": ...,
+   "business": {...}, "employee": {...}}` (karyawan). Sesi karyawan beda
+   dari sesi owner HANYA dari ada/tidaknya field `employee_id` di
+   dokumen `sessions` -- bukan koleksi terpisah.
 2. Client menyimpan token itu (di sisi frontend: `expo-secure-store`,
    lihat `src/utils/session.ts`) dan mengirimnya lagi di setiap request
    ke endpoint yang butuh sesi lewat header `Authorization: Bearer <token>`.
-3. Endpoint yang mengakses data milik satu business (karyawan, absensi,
-   lembur, dst) **wajib** punya parameter:
+3. Ada DUA dependency, pilih sesuai siapa yang boleh manggil endpointnya:
 
    ```python
+   # Endpoint khusus OWNER (kelola karyawan, lihat semua absensi, dst).
+   # Nolak (401) kalau sesinya sesi karyawan (punya employee_id) --
+   # karyawan gak boleh pakai token-nya sendiri buat manggil endpoint ini.
    business_id: str = Depends(get_current_business_id)
+
+   # Endpoint khusus KARYAWAN (absen, riwayat/data milik sendiri).
+   # Nolak (401) kalau sesinya sesi owner (gak punya employee_id).
+   business_id, employee_id = Depends(get_current_employee)
    ```
 
-   Dependency ini yang menerjemahkan token -> `business_id` dengan
-   mem-verifikasi ke koleksi `sessions`. Kalau header `Authorization`
-   gak ada, formatnya salah, atau tokennya gak ketemu di `sessions`,
-   otomatis raise `401` dengan pesan "Sesi tidak valid, silakan login
-   ulang" -- endpoint gak akan pernah kejalanin dengan business_id yang
-   gak terverifikasi.
+   Keduanya resolve dari header `Authorization: Bearer <token>` ke
+   koleksi `sessions`, raise `401` "Sesi tidak valid, silakan login
+   ulang" kalau token gak ada/gak ketemu/salah jenis sesi.
 
    **Jangan** tulis ulang cek token secara manual di tiap endpoint --
-   selalu lewat dependency ini (atau turunannya, lihat catatan karyawan
-   di bawah) supaya polanya konsisten dan gampang di-audit.
+   selalu lewat salah satu dependency ini supaya polanya konsisten dan
+   gampang di-audit.
 
-4. Endpoint TIDAK BOLEH menerima `business_id` sebagai path/body/query
-   param kalau tujuannya buat nentuin data siapa yang diakses. Contoh
-   yang benar (poin 6, `list_employees`/`create_employee`):
+4. Endpoint TIDAK BOLEH menerima `business_id` (atau `employee_id`)
+   sebagai path/body/query param kalau tujuannya buat nentuin data siapa
+   yang diakses. Contoh yang benar (poin 6, `list_employees`/`create_employee`):
 
    ```python
    @api_router.get("/employees")
@@ -68,16 +75,24 @@ mau diperketat (misal: setelah kredensial pernah di-set, wajib sesi buat
 ubah token/kredensial lagi), itu penambahan scope yang perlu didiskusikan
 dulu -- jangan diam-diam diubah.
 
-### Karyawan (poin 7 dan seterusnya)
+### Karyawan (diimplementasi poin 7, `POST /api/employees/login`)
 
-Login karyawan bakal butuh isolasi SATU LEVEL LEBIH SEMPIT dari owner:
-bukan cuma "business_id yang mana", tapi juga "employee_id yang mana" --
-seorang karyawan cuma boleh lihat absensi/riwayat dirinya sendiri, bukan
-karyawan lain di business yang sama. Pola yang sama berlaku: sesi
-karyawan simpan `{business_id, employee_id}`, dan endpoint karyawan pakai
-dependency turunan (misal `get_current_employee() -> (business_id, employee_id)`)
-yang juga menolak (401/403) kalau sesi gak valid ATAU employee_id di
-data yang diakses gak cocok sama punya sesi.
+Isolasi karyawan SATU LEVEL LEBIH SEMPIT dari owner: bukan cuma
+"business_id yang mana", tapi juga "employee_id yang mana" -- seorang
+karyawan cuma boleh lihat absensi/riwayat dirinya sendiri, bukan
+karyawan lain di business yang sama. `get_current_employee()` balikin
+tuple `(business_id, employee_id)` dari sesi -- endpoint karyawan (poin
+8+: absen, riwayat) wajib scoping query-nya pakai KEDUANYA, bukan cuma
+business_id, kalau data itu spesifik per-karyawan.
+
+Login karyawan (Token Usaha + PIN, tanpa dropdown pilih nama -- aturan
+keras section 9) nyari karyawan dengan nyoba `bcrypt.checkpw` PIN yang
+dikirim ke `pin_hash` semua karyawan aktif di business itu satu-satu.
+Ini KENAPA PIN karyawan harus unik dalam satu business -- `create_employee`
+udah nolak (409) kalau PIN yang mau didaftarin sudah dipakai karyawan
+lain yang masih aktif di business yang sama. Kalau nanti ada fitur
+nonaktifkan karyawan, PIN karyawan yang dinonaktifkan otomatis "bebas"
+dipakai ulang (karena pengecekan cuma against `is_active: true`).
 
 ### Keterbatasan yang disengaja (Phase 1)
 

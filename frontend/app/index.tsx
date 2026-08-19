@@ -12,8 +12,13 @@ export default function Splash() {
 
   useEffect(() => {
     (async () => {
-      if (await shouldAutoLogin()) {
+      const role = await shouldAutoLogin();
+      if (role === "owner") {
         router.replace("/dashboard-owner");
+        return;
+      }
+      if (role === "karyawan") {
+        router.replace("/dashboard-karyawan");
         return;
       }
       setCheckingSession(false);

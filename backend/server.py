@@ -48,33 +48,55 @@ EMPLOYEE_LIMIT_DEFAULT = 20
 # --- Auth / tenant isolation ---------------------------------------------
 # Section 2 & 9 dari brief: isolasi data antar business_id WAJIB ditegakkan
 # di backend (Mongo gak punya RLS kayak Postgres). Pola: setiap login
-# (owner atau karyawan, nanti poin 7) dapat token sesi opaque yang disimpan
-# di koleksi `sessions` -> business_id. Endpoint yang akses data
-# karyawan/absensi TIDAK BOLEH menerima business_id dari path/body/query --
-# wajib lewat get_current_business_id, yang nolak (401) kalau token gak ada
-# atau gak valid. Detail & endpoint mana yang jadi pengecualian (bootstrap
-# sebelum ada sesi) didokumentasikan di backend/CONVENTIONS.md.
-async def create_session(business_id: str) -> str:
+# (owner ATAU karyawan) dapat token sesi opaque yang disimpan di koleksi
+# `sessions` -> business_id (+ employee_id kalau yang login karyawan).
+# Endpoint yang akses data karyawan/absensi TIDAK BOLEH menerima business_id
+# dari path/body/query -- wajib lewat salah satu dependency di bawah, yang
+# nolak (401) kalau token gak ada/gak valid. Detail & endpoint mana yang
+# jadi pengecualian (bootstrap sebelum ada sesi) didokumentasikan di
+# backend/CONVENTIONS.md.
+async def create_session(business_id: str, employee_id: Optional[str] = None) -> str:
     token = secrets.token_urlsafe(32)
-    await db.sessions.insert_one({
+    doc = {
         "_id": token,
         "business_id": business_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+    }
+    if employee_id:
+        doc["employee_id"] = employee_id
+    await db.sessions.insert_one(doc)
     return token
 
 
-async def get_current_business_id(authorization: str = Header(default="")) -> str:
-    invalid = HTTPException(status_code=401, detail="Sesi tidak valid, silakan login ulang")
+async def _resolve_session(authorization: str) -> Optional[dict]:
     if not authorization.startswith("Bearer "):
-        raise invalid
+        return None
     token = authorization.removeprefix("Bearer ").strip()
     if not token:
-        raise invalid
-    session = await db.sessions.find_one({"_id": token})
-    if not session:
+        return None
+    return await db.sessions.find_one({"_id": token})
+
+
+# Owner-scoped: business_id dari sesi, TAPI nolak kalau sesinya sesi karyawan
+# (punya employee_id) -- karyawan gak boleh pakai token sesinya sendiri buat
+# manggil endpoint kelola-karyawan milik owner.
+async def get_current_business_id(authorization: str = Header(default="")) -> str:
+    invalid = HTTPException(status_code=401, detail="Sesi tidak valid, silakan login ulang")
+    session = await _resolve_session(authorization)
+    if not session or session.get("employee_id"):
         raise invalid
     return session["business_id"]
+
+
+# Karyawan-scoped: butuh sesi yang punya employee_id (dari /employees/login).
+# Dipakai endpoint absensi/riwayat nanti (poin 8+) supaya karyawan cuma bisa
+# akses datanya sendiri, bukan data karyawan lain di business yang sama.
+async def get_current_employee(authorization: str = Header(default="")) -> tuple[str, str]:
+    invalid = HTTPException(status_code=401, detail="Sesi tidak valid, silakan login ulang")
+    session = await _resolve_session(authorization)
+    if not session or not session.get("employee_id"):
+        raise invalid
+    return session["business_id"], session["employee_id"]
 
 
 @api_router.get("/")
@@ -330,6 +352,14 @@ async def create_employee(payload: EmployeeCreate, business_id: str = Depends(ge
     current_count = await db.employees.count_documents({"business_id": business_id})
     if current_count >= biz.get("employee_limit", EMPLOYEE_LIMIT_DEFAULT):
         raise HTTPException(status_code=409, detail=f"Sudah mencapai batas maksimal {biz.get('employee_limit', EMPLOYEE_LIMIT_DEFAULT)} karyawan")
+    # PIN harus unik dalam satu business -- Login Karyawan (poin 7) nyari
+    # karyawan cuma dari Token Usaha + PIN (gak ada dropdown pilih nama),
+    # jadi kalau dua karyawan boleh pakai PIN sama, sistem gak akan bisa
+    # nentuin siapa yang login.
+    siblings = await db.employees.find({"business_id": business_id, "is_active": True}).to_list(1000)
+    for sib in siblings:
+        if bcrypt.checkpw(payload.pin.encode(), sib["pin_hash"].encode()):
+            raise HTTPException(status_code=409, detail="PIN ini sudah dipakai karyawan lain, pilih PIN lain")
     pin_hash = bcrypt.hashpw(payload.pin.encode(), bcrypt.gensalt()).decode()
     now = datetime.now(timezone.utc).isoformat()
     employee = {
@@ -344,6 +374,30 @@ async def create_employee(payload: EmployeeCreate, business_id: str = Depends(ge
     }
     await db.employees.insert_one(employee)
     return serialize_employee(employee)
+
+
+class EmployeeLogin(BaseModel):
+    token: str
+    pin: str
+
+
+@api_router.post("/employees/login")
+async def employee_login(payload: EmployeeLogin):
+    generic_error = "Token Usaha atau PIN salah"
+    token = payload.token.strip().upper()
+    biz = await db.businesses.find_one({"token": token})
+    if not biz:
+        raise HTTPException(status_code=401, detail=generic_error)
+    employees = await db.employees.find({"business_id": biz["_id"], "is_active": True}).to_list(1000)
+    matched = None
+    for emp in employees:
+        if bcrypt.checkpw(payload.pin.encode(), emp["pin_hash"].encode()):
+            matched = emp
+            break
+    if not matched:
+        raise HTTPException(status_code=401, detail=generic_error)
+    session_token = await create_session(biz["_id"], employee_id=matched["_id"])
+    return {"token": session_token, "business": serialize_business(biz), "employee": serialize_employee(matched)}
 
 
 app.include_router(api_router)
