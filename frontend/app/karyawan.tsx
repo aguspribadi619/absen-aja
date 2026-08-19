@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Header } from "@/src/components/Header";
 import { Icon } from "@/src/components/Icon";
+import { OwnerBottomNav } from "@/src/components/OwnerBottomNav";
 import { authHeaders } from "@/src/utils/session";
 import { C } from "@/src/theme";
 
@@ -89,6 +90,7 @@ export default function Karyawan() {
           )}
         />
       </View>
+      <OwnerBottomNav active="karyawan" />
     </SafeAreaView>
   );
 }

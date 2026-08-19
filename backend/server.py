@@ -506,6 +506,34 @@ async def create_attendance(payload: AttendanceCreate, current=Depends(get_curre
     }
 
 
+@api_router.get("/dashboard/owner")
+async def owner_dashboard(business_id: str = Depends(get_current_business_id)):
+    biz = await db.businesses.find_one({"_id": business_id})
+    if not biz:
+        raise HTTPException(status_code=404, detail="Usaha tidak ditemukan")
+
+    total_employees = await db.employees.count_documents({"business_id": business_id, "is_active": True})
+    start_iso, end_iso = wib_today_bounds_utc()
+    today_records = await db.attendance.find({
+        "business_id": business_id,
+        "type": "masuk",
+        "server_timestamp": {"$gte": start_iso, "$lt": end_iso},
+    }).to_list(1000)
+
+    hadir = len(today_records)
+    terlambat = sum(1 for r in today_records if r.get("minutes_late", 0) > 0)
+    belum_absen = max(0, total_employees - hadir)
+    total_denda = sum(r.get("penalty_amount", 0) for r in today_records)
+
+    return {
+        "business": serialize_business(biz),
+        "hadir": hadir,
+        "terlambat": terlambat,
+        "belum_absen": belum_absen,
+        "total_denda_hari_ini": total_denda,
+    }
+
+
 app.include_router(api_router)
 
 app.add_middleware(
