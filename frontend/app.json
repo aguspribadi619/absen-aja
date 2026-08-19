@@ -18,7 +18,10 @@
         "backgroundColor": "#004AC2"
       },
       "edgeToEdgeEnabled": true,
-      "package": "id.absenaja.app"
+      "package": "id.absenaja.app",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -46,13 +49,23 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Dipakai buat ambil foto bukti absen kamu."
+          "cameraPermission": "Dipakai buat ambil foto bukti absen kamu.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
         }
       ],
       "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "9e94a5f7-8d67-4cff-a8bd-9f6a3e3cc448"
+      }
+    },
+    "owner": "ampribadi619"
   }
 }
