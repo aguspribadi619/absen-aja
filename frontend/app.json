@@ -48,7 +48,8 @@
         {
           "cameraPermission": "Dipakai buat ambil foto bukti absen kamu."
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true
