@@ -10,6 +10,8 @@ import { C } from "@/src/theme";
 
 const BACKEND = process.env.EXPO_PUBLIC_BACKEND_URL;
 
+const BANNER_SOURCE = require("@/assets/images/banner-dashboard.png");
+
 type RecentActivity = {
   employee_id: string;
   employee_name: string;
@@ -81,9 +83,9 @@ export default function DashboardOwner() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.hero}>
           <Image
-            source={require("@/assets/images/banner-dashboard.png")}
+            source={BANNER_SOURCE}
             style={styles.heroBg}
-            resizeMode="contain"
+            resizeMode="cover"
           />
           <View style={styles.heroContent}>
             <View style={styles.heroTopRow}>
@@ -199,8 +201,8 @@ const styles = StyleSheet.create({
   errorText: { color: C.danger, fontSize: 14, textAlign: "center" },
   scrollContent: { paddingBottom: 20 },
   flex1: { flex: 1 },
-  hero: { width: "100%", overflow: "hidden", position: "relative", backgroundColor: C.bg },
-  heroBg: { width: "100%", height: 150 },
+  hero: { width: "100%", aspectRatio: 2, overflow: "hidden", position: "relative", backgroundColor: C.bg },
+  heroBg: { width: "100%", height: "100%" },
   heroContent: { position: "absolute", top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 16 },
   heroTopRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
   greeting: { fontSize: 12.5, fontWeight: "700", color: C.navy, marginTop: 4, marginBottom: 2 },
