@@ -83,7 +83,7 @@ export default function DashboardOwner() {
           <Image
             source={require("@/assets/images/banner-dashboard.png")}
             style={styles.heroBg}
-            resizeMode="cover"
+            resizeMode="contain"
           />
           <View style={styles.heroContent}>
             <View style={styles.heroTopRow}>
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingBottom: 20 },
   flex1: { flex: 1 },
   hero: { width: "100%", overflow: "hidden", position: "relative", backgroundColor: C.bg },
-  heroBg: { width: "100%", aspectRatio: 2 },
+  heroBg: { width: "100%", height: 150 },
   heroContent: { position: "absolute", top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 16 },
   heroTopRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
   greeting: { fontSize: 12.5, fontWeight: "700", color: C.navy, marginTop: 4, marginBottom: 2 },
